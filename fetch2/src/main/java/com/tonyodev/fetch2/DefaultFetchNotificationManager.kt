@@ -96,6 +96,11 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
                 .setGroupSummary(false)
         if (downloadNotification.isFailed || downloadNotification.isCompleted) {
             notificationBuilder.setProgress(0, 0, false)
+            if (cIntent != null) {
+                //.putExtra("file_name", downloadNotification.download.file);
+                notificationBuilder.setContentIntent(PendingIntent.getActivity(context, 0, cIntent, 0))
+
+            }
         } else {
             val progressIndeterminate = downloadNotification.progressIndeterminate
             val maxProgress = if (downloadNotification.progressIndeterminate) 0 else 100
@@ -120,33 +125,6 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
                                 context.getString(R.string.fetch_notification_download_cancel),
                                 getActionPendingIntent(downloadNotification, CANCEL))
             }
-            /*  downloadNotification.isFailed -> {
-                  notificationBuilder.addAction(R.drawable.ic_launcher_round,
-                          context.getString(R.string.fetch_notification_download_retry),
-                          getActionPendingIntent(downloadNotification, RETRY))
-                          .addAction(R.drawable.ic_launcher_round,
-                                  context.getString(R.string.fetch_notification_download_cancel),
-                                  getActionPendingIntent(downloadNotification, RETRY))
-
-
-
-                  if (cIntent != null) {
-                      cIntent?.putExtra("file_name", downloadNotification.download.file);
-
-                  }
-                  notificationBuilder.setContentIntent(PendingIntent.getActivity(context, 0, cIntent, 0))
-
-              }*/
-            downloadNotification.isCompleted -> {
-                notificationBuilder.addAction(R.drawable.ic_launcher_round,
-                        context.getString(R.string.fetch_notification_download_complete),
-                        getActionPendingIntent(downloadNotification, COMPLETED))
-                if (cIntent != null) {
-                    //.putExtra("file_name", downloadNotification.download.file);
-                    notificationBuilder.setContentIntent(PendingIntent.getActivity(context, 0, cIntent, 0))
-
-                }
-            }
         }
     }
 
@@ -165,7 +143,6 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
             intent.putExtra(EXTRA_NOTIFICATION_ID, downloadNotification.notificationId)
             intent.putExtra(EXTRA_GROUP_ACTION, false)
             intent.putExtra(EXTRA_NOTIFICATION_GROUP_ID, downloadNotification.groupId)
-            intent.putExtra(EXTRA_FILENAME_ACTION, downloadNotification.download.file)
 
             val action = when (actionType) {
                 CANCEL -> ACTION_TYPE_CANCEL
@@ -173,7 +150,6 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
                 RESUME -> ACTION_TYPE_RESUME
                 PAUSE -> ACTION_TYPE_PAUSE
                 RETRY -> ACTION_TYPE_RETRY
-                COMPLETED -> ACTION_TYPE_OPEN
                 else -> ACTION_TYPE_INVALID
             }
             intent.putExtra(EXTRA_ACTION_TYPE, action)
