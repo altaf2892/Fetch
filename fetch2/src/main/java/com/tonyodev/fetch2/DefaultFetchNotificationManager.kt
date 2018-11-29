@@ -1,14 +1,19 @@
 package com.tonyodev.fetch2
 
-import android.app.*
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.support.v4.app.NotificationCompat
-
+import android.support.v4.content.FileProvider
 import com.tonyodev.fetch2.DownloadNotification.ActionType.*
+import java.io.File
 
 /**
  * The default notification manager class for Fetch. This manager supports both single
@@ -18,17 +23,23 @@ import com.tonyodev.fetch2.DownloadNotification.ActionType.*
 open class DefaultFetchNotificationManager(context: Context) : FetchNotificationManager {
 
     private val context: Context = context.applicationContext
+    public var cIntent = Intent();
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     private val downloadNotificationsMap = mutableMapOf<Int, DownloadNotification>()
     private val downloadNotificationsBuilderMap = mutableMapOf<Int, NotificationCompat.Builder>()
     override var progressReportingIntervalInMillis: Long = 0L
+    public val notificationTitle = "";
+    public val statusTitle = "";
+    public val notyIcon = R.drawable.ic_launcher_round;
 
     init {
         initialize()
+        cIntent = Intent()
     }
 
-    private fun initialize() {
+
+    public fun initialize() {
         createNotificationChannels(context, notificationManager)
     }
 
@@ -58,8 +69,8 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
             val contentTitle = getContentText(context, downloadNotification)
             style.addLine("$title $contentTitle")
         }
-        notificationBuilder.setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+        notificationBuilder.setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setSmallIcon(R.drawable.ic_launcher_round)
                 .setContentTitle(context.getString(R.string.fetch_notification_default_channel_name))
                 .setContentText("")
                 .setStyle(style)
@@ -72,11 +83,11 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
                                     downloadNotification: DownloadNotification,
                                     context: Context) {
         val smallIcon = if (downloadNotification.isDownloading) {
-            android.R.drawable.stat_sys_download
+            R.drawable.ic_launcher_round
         } else {
-            android.R.drawable.stat_sys_download_done
+            R.drawable.ic_launcher_round
         }
-        notificationBuilder.setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        notificationBuilder.setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setSmallIcon(smallIcon)
                 .setContentTitle(getContentTitle(downloadNotification))
                 .setContentText(getContentText(context, downloadNotification))
@@ -94,42 +105,79 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
         }
         when {
             downloadNotification.isDownloading -> {
-                notificationBuilder.addAction(R.drawable.fetch_notification_pause,
+                notificationBuilder.addAction(R.drawable.ic_launcher_round,
                         context.getString(R.string.fetch_notification_download_pause),
                         getActionPendingIntent(downloadNotification, PAUSE))
-                        .addAction(R.drawable.fetch_notification_cancel,
+                        .addAction(R.drawable.ic_launcher_round,
                                 context.getString(R.string.fetch_notification_download_cancel),
                                 getActionPendingIntent(downloadNotification, CANCEL))
             }
             downloadNotification.isPaused -> {
-                notificationBuilder.addAction(R.drawable.fetch_notification_resume,
+                notificationBuilder.addAction(R.drawable.ic_launcher_round,
                         context.getString(R.string.fetch_notification_download_resume),
                         getActionPendingIntent(downloadNotification, RESUME))
-                        .addAction(R.drawable.fetch_notification_cancel,
+                        .addAction(R.drawable.ic_launcher_round,
                                 context.getString(R.string.fetch_notification_download_cancel),
                                 getActionPendingIntent(downloadNotification, CANCEL))
             }
+            /*  downloadNotification.isFailed -> {
+                  notificationBuilder.addAction(R.drawable.ic_launcher_round,
+                          context.getString(R.string.fetch_notification_download_retry),
+                          getActionPendingIntent(downloadNotification, RETRY))
+                          .addAction(R.drawable.ic_launcher_round,
+                                  context.getString(R.string.fetch_notification_download_cancel),
+                                  getActionPendingIntent(downloadNotification, RETRY))
+
+
+
+                  if (cIntent != null) {
+                      cIntent?.putExtra("file_name", downloadNotification.download.file);
+
+                  }
+                  notificationBuilder.setContentIntent(PendingIntent.getActivity(context, 0, cIntent, 0))
+
+              }*/
+            downloadNotification.isCompleted -> {
+                notificationBuilder.addAction(R.drawable.ic_launcher_round,
+                        context.getString(R.string.fetch_notification_download_complete),
+                        getActionPendingIntent(downloadNotification, COMPLETED))
+                if (cIntent != null) {
+                    //.putExtra("file_name", downloadNotification.download.file);
+                    notificationBuilder.setContentIntent(PendingIntent.getActivity(context, 0, cIntent, 0))
+
+                }
+            }
         }
+    }
+
+
+    fun setCompletedIntent(intent: Intent) {
+        this.cIntent = intent;
     }
 
     override fun getActionPendingIntent(downloadNotification: DownloadNotification,
                                         actionType: DownloadNotification.ActionType): PendingIntent {
         synchronized(downloadNotificationsMap) {
             val intent = Intent(ACTION_NOTIFICATION_ACTION)
+            //
             intent.putExtra(EXTRA_NAMESPACE, downloadNotification.download.namespace)
             intent.putExtra(EXTRA_DOWNLOAD_ID, downloadNotification.download.id)
             intent.putExtra(EXTRA_NOTIFICATION_ID, downloadNotification.notificationId)
             intent.putExtra(EXTRA_GROUP_ACTION, false)
             intent.putExtra(EXTRA_NOTIFICATION_GROUP_ID, downloadNotification.groupId)
+            intent.putExtra(EXTRA_FILENAME_ACTION, downloadNotification.download.file)
+
             val action = when (actionType) {
                 CANCEL -> ACTION_TYPE_CANCEL
                 DELETE -> ACTION_TYPE_DELETE
                 RESUME -> ACTION_TYPE_RESUME
                 PAUSE -> ACTION_TYPE_PAUSE
                 RETRY -> ACTION_TYPE_RETRY
+                COMPLETED -> ACTION_TYPE_OPEN
                 else -> ACTION_TYPE_INVALID
             }
             intent.putExtra(EXTRA_ACTION_TYPE, action)
+
             return PendingIntent.getBroadcast(context, System.currentTimeMillis().toInt(), intent, PendingIntent.FLAG_CANCEL_CURRENT)
         }
     }
@@ -246,7 +294,7 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
                     .setGroupSummary(false)
                     .setOngoing(false)
                     .setGroup(groupId.toString())
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setSmallIcon(R.drawable.ic_launcher_round)
                     .mActions.clear()
             return notificationBuilder
         }
@@ -275,13 +323,13 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
         return 3000
     }
 
-    private fun getContentTitle(downloadNotification: DownloadNotification): String {
+    public fun getContentTitle(downloadNotification: DownloadNotification): String {
         val download = downloadNotification.download
         return download.fileUri.lastPathSegment ?: Uri.parse(download.url).lastPathSegment
         ?: download.url
     }
 
-    private fun getContentText(context: Context, downloadNotification: DownloadNotification): String {
+    public fun getContentText(context: Context, downloadNotification: DownloadNotification): String {
         return when {
             downloadNotification.isCompleted -> context.getString(R.string.fetch_notification_download_complete)
             downloadNotification.isFailed -> context.getString(R.string.fetch_notification_download_failed)
@@ -292,7 +340,7 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
         }
     }
 
-    private fun getEtaText(context: Context, etaInMilliSeconds: Long): String {
+    public fun getEtaText(context: Context, etaInMilliSeconds: Long): String {
         var seconds = (etaInMilliSeconds / 1000)
         val hours = (seconds / 3600)
         seconds -= (hours * 3600)
@@ -303,6 +351,7 @@ open class DefaultFetchNotificationManager(context: Context) : FetchNotification
             minutes > 0 -> context.getString(R.string.fetch_notification_download_eta_min, minutes, seconds)
             else -> context.getString(R.string.fetch_notification_download_eta_sec, seconds)
         }
-    }
+    }}
 
-}
+
+

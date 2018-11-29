@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <root-path
+        name="root"
+        path="" />
+    <external-path
+        name="external_files"
+        path="." />
+    <root-path
+        name="root_path"
+        path="." />
+    <files-path name="my_notification_sounds" path="notification_sounds/"/>
+    <files-path name="RxPaparazzoImages" path="RxPaparazzo/"/>
+    <files-path
+        name="files"
+        path="." />
+
+    <cache-path
+        name="cache"
+        path="." />
+
+    <external-path
+        name="external"
+        path="." />
+
+    <external-files-path
+        name="external_file_path"
+        path="." />
+    <external-cache-path
+        name="external_cache_path"
+        path="." />
+
+    <external-path
+        name="external_storage_root"
+        path="." />
+
+</paths>
